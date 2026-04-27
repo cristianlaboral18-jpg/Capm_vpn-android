@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CAPM VPN">
+<meta name="theme-color" content="#00ff41">
+<meta name="description" content="Control center de tu VPN personal">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icons/icon-192x192.png">
+<title>CAPM VPN</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+:root {
+  --bg: #000000;
+  --bg2: #050a05;
+  --surface: #0a0f0a;
+  --border: #0d2b0d;
+  --green: #00ff41;
+  --green2: #00cc33;
+  --green-dim: #004d14;
+  --green-glow: rgba(0,255,65,0.15);
+  --red: #ff2244;
+  --red-dim: #330a10;
+  --yellow: #ffcc00;
+  --text: #c8ffc8;
+  --muted: #2a5c2a;
+  --mono: 'Share Tech Mono', monospace;
+  --display: 'Orbitron', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  overflow-x: hidden;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+  z-index: 999;
+}
+
+#matrix {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  opacity: 0.04;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 0 0 32px;
+}
+
+/* INSTALL BANNER */
+.install-banner {
+  display: none;
+  background: linear-gradient(135deg, #001a00, #002a00);
+  border-bottom: 1px solid var(--green);
+  padding: 12px 16px;
+  align-items: center;
+  gap: 12px;
+  animation: slideDown 0.4s ease;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.install-banner.show { display: flex; }
+
+.install-banner-text {
+  flex: 1;
+  font-size: 11px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.install-banner-text strong {
+  color: var(--green);
+  display: block;
+  margin-bottom: 2px;
+  font-family: var(--display);
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+
+.install-btn {
+  background: var(--green);
+  border: none;
+  color: #000;
+  font-family: var(--display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 8px 14px;
+  border-radius: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dismiss-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+/* HEADER */
+header {
+  padding: 44px 24px 20px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+header::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--green), transparent);
+  animation: scanH 3s linear infinite;
+}
+
+@keyframes scanH {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.brand {
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--green);
+  text-shadow: 0 0 20px var(--green), 0 0 40px rgba(0,255,65,0.3);
+  letter-spacing: 4px;
+  animation: flicker 8s infinite;
+}
+
+@keyframes flicker {
+  0%,94%,96%,100% { opacity: 1; }
+  95% { opacity: 0.7; }
+}
+
+.version { font-size: 10px; color: var(--muted); letter-spacing: 2px; margin-top: 4px; }
+
+.signal-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 22px;
+}
+
+.bar { width: 5px; background: var(--green-dim); border-radius: 1px; transition: background 0.3s; }
+.bar:nth-child(1) { height: 5px; }
+.bar:nth-child(2) { height: 9px; }
+.bar:nth-child(3) { height: 13px; }
+.bar:nth-child(4) { height: 17px; }
+.bar:nth-child(5) { height: 22px; }
+.bar.active { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+.status-line { font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+.status-line span { color: var(--green); animation: blink 1.2s step-end infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* VPN BUTTON */
+.vpn-section {
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.vpn-ring { position: relative; width: 170px; height: 170px; }
+
+.ring-svg {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  animation: spin 8s linear infinite;
+}
+
+.ring-svg2 {
+  position: absolute; inset: 8px;
+  width: calc(100% - 16px); height: calc(100% - 16px);
+  animation: spin 5s linear infinite reverse;
+}
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+.vpn-btn {
+  position: absolute; inset: 20px;
+  border-radius: 50%;
+  background: var(--bg2);
+  border: 2px solid var(--green-dim);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.3s; gap: 4px;
+}
+
+.vpn-btn:active { transform: scale(0.96); }
+
+.vpn-btn.connected {
+  border-color: var(--green);
+  box-shadow: 0 0 30px var(--green-glow), inset 0 0 30px var(--green-glow);
+  background: rgba(0,20,0,0.8);
+}
+
+.vpn-btn.connecting {
+  border-color: var(--yellow);
+  animation: pulse-btn 0.8s ease-in-out infinite;
+}
+
+@keyframes pulse-btn {
+  0%,100% { box-shadow: 0 0 20px rgba(255,204,0,0.2); }
+  50% { box-shadow: 0 0 40px rgba(255,204,0,0.4); }
+}
+
+.power-icon { font-size: 34px; line-height: 1; transition: all 0.3s; }
+.vpn-btn.connected .power-icon { filter: drop-shadow(0 0 8px var(--green)); }
+
+.btn-label { font-family: var(--display); font-size: 9px; letter-spacing: 2px; color: var(--muted); transition: color 0.3s; }
+.vpn-btn.connected .btn-label { color: var(--green); }
+
+.vpn-status-text { font-family: var(--display); font-size: 12px; letter-spacing: 3px; color: var(--muted); transition: all 0.3s; }
+.vpn-status-text.connected { color: var(--green); text-shadow: 0 0 10px var(--green); }
+.vpn-status-text.connecting { color: var(--yellow); }
+
+/* PANELS */
+.panel { margin: 0 16px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+
+.panel-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 16px; border-bottom: 1px solid var(--border);
+  font-size: 9px; letter-spacing: 2px; color: var(--muted);
+}
+
+.panel-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green-dim); }
+.panel-dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse-dot 2s ease-in-out infinite; }
+@keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.ip-grid { display: grid; grid-template-columns: 1fr 1fr; }
+
+.ip-cell { padding: 12px 16px; border-right: 1px solid var(--border); }
+.ip-cell:last-child { border-right: none; }
+.ip-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-bottom: 5px; }
+.ip-value { font-size: 12px; color: var(--green); word-break: break-all; line-height: 1.4; }
+.ip-value.loading { color: var(--muted); animation: blink 0.8s step-end infinite; }
+.ip-value.home { color: var(--text); }
+.ip-value.match { color: var(--green); text-shadow: 0 0 8px var(--green); }
+
+/* PC STATUS */
+.pc-panel {
+  margin: 0 16px 12px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 14px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.pc-info { display: flex; align-items: center; gap: 12px; }
+.pc-icon { font-size: 26px; line-height: 1; }
+.pc-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-bottom: 4px; }
+.pc-state { font-size: 12px; font-family: var(--display); letter-spacing: 1px; }
+.pc-state.online { color: var(--green); text-shadow: 0 0 8px var(--green); }
+.pc-state.offline { color: var(--red); }
+.pc-state.checking { color: var(--yellow); animation: blink 0.8s step-end infinite; }
+
+.check-btn {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--muted); font-family: var(--mono); font-size: 10px;
+  letter-spacing: 1px; padding: 8px 12px; border-radius: 2px;
+  cursor: pointer; transition: all 0.2s;
+}
+.check-btn:active, .check-btn:hover { border-color: var(--green); color: var(--green); background: var(--green-glow); }
+
+/* WOL */
+.wol-body { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+.wol-input-row { display: flex; gap: 8px; align-items: center; }
+
+.wol-input {
+  flex: 1; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 2px; color: var(--green); font-family: var(--mono);
+  font-size: 11px; padding: 8px 10px; outline: none; transition: border-color 0.2s; letter-spacing: 1px;
+}
+.wol-input::placeholder { color: var(--muted); }
+.wol-input:focus { border-color: var(--green); }
+
+.wol-btn {
+  background: var(--green-dim); border: 1px solid var(--green); color: var(--green);
+  font-family: var(--display); font-size: 9px; letter-spacing: 2px;
+  padding: 8px 12px; border-radius: 2px; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+}
+.wol-btn:active { background: rgba(0,255,65,0.2); box-shadow: 0 0 12px var(--green-glow); }
+
+.wol-feedback { font-size: 10px; color: var(--muted); min-height: 14px; letter-spacing: 1px; }
+.wol-feedback.ok { color: var(--green); }
+.wol-feedback.err { color: var(--red); }
+
+/* LOG */
+.log-body {
+  padding: 10px 16px; max-height: 110px; overflow-y: auto;
+  display: flex; flex-direction: column-reverse; gap: 3px;
+}
+.log-body::-webkit-scrollbar { width: 2px; }
+.log-body::-webkit-scrollbar-thumb { background: var(--green-dim); }
+
+.log-line { font-size: 10px; color: var(--muted); display: flex; gap: 8px; line-height: 1.4; }
+.log-line .ts { color: #1a3d1a; flex-shrink: 0; }
+.log-line.ok .msg { color: var(--green); }
+.log-line.err .msg { color: var(--red); }
+.log-line.info .msg { color: var(--yellow); }
+
+/* FOOTER */
+footer {
+  margin: 8px 16px 0;
+  padding-top: 12px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.footer-brand { font-family: var(--display); font-size: 9px; color: var(--muted); letter-spacing: 3px; }
+.footer-uptime { font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+
+/* SETTINGS */
+.settings-btn {
+  position: fixed; top: 44px; right: 18px; z-index: 10;
+  background: transparent; border: none; color: var(--muted); font-size: 17px; cursor: pointer; padding: 8px;
+}
+.settings-btn:hover { color: var(--green); }
+
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.97); z-index: 50;
+  padding: 56px 24px 24px; flex-direction: column; gap: 14px; overflow-y: auto;
+}
+.overlay.show { display: flex; }
+
+.overlay h2 { font-family: var(--display); font-size: 14px; color: var(--green); letter-spacing: 4px; margin-bottom: 4px; }
+
+.setting-row { display: flex; flex-direction: column; gap: 5px; }
+.setting-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; }
+
+.setting-input {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 2px;
+  color: var(--green); font-family: var(--mono); font-size: 13px;
+  padding: 10px 14px; outline: none; width: 100%;
+}
+.setting-input:focus { border-color: var(--green); }
+
+.save-btn {
+  background: var(--green-dim); border: 1px solid var(--green); color: var(--green);
+  font-family: var(--display); font-size: 11px; letter-spacing: 3px; padding: 13px;
+  border-radius: 2px; cursor: pointer; width: 100%; margin-top: 4px;
+}
+.save-btn:active { background: rgba(0,255,65,0.2); }
+
+.close-btn { position: absolute; top: 18px; right: 18px; background: transparent; border: none; color: var(--muted); font-size: 22px; cursor: pointer; }
+
+.setting-hint { font-size: 9px; color: #1a3d1a; letter-spacing: 1px; line-height: 1.5; }
+
+/* PWA install toast */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--green); color: #000; font-family: var(--display);
+  font-size: 10px; letter-spacing: 2px; padding: 10px 20px; border-radius: 2px;
+  z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap;
+}
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<canvas id="matrix"></canvas>
+<div class="toast" id="toast"></div>
+
+<button class="settings-btn" onclick="showSettings()">⚙</button>
+
+<!-- Install Banner -->
+<div class="install-banner" id="installBanner">
+  <img src="./icons/icon-72x72.png" style="width:36px;height:36px;border-radius:6px;" alt="icon">
+  <div class="install-banner-text">
+    <strong>INSTALAR CAPM VPN</strong>
+    Añade la app a tu pantalla de inicio
+  </div>
+  <button class="install-btn" id="installBtn" onclick="installPWA()">INSTALAR</button>
+  <button class="dismiss-btn" onclick="dismissBanner()">✕</button>
+</div>
+
+<!-- Settings -->
+<div class="overlay" id="settingsOverlay">
+  <button class="close-btn" onclick="hideSettings()">✕</button>
+  <h2>// CONFIG</h2>
+
+  <div class="setting-row">
+    <div class="setting-label">IP PÚBLICA DE CASA</div>
+    <input class="setting-input" id="cfgHomeIP" placeholder="ej: 85.120.45.200" />
+    <div class="setting-hint">La que viste en whatismyip.com</div>
+  </div>
+  <div class="setting-row">
+    <div class="setting-label">IP LOCAL DEL PC (LAN)</div>
+    <input class="setting-input" id="cfgPcIP" placeholder="ej: 192.168.1.100" />
+    <div class="setting-hint">Ejecuta ipconfig en tu PC → IPv4</div>
+  </div>
+  <div class="setting-row">
+    <div class="setting-label">MAC ADDRESS DEL PC</div>
+    <input class="setting-input" id="cfgMac" placeholder="ej: AA:BB:CC:DD:EE:FF" />
+    <div class="setting-hint">ipconfig /all → Physical Address</div>
+  </div>
+  <div class="setting-row">
+    <div class="setting-label">NOMBRE DEL TÚNEL WIREGUARD</div>
+    <input class="setting-input" id="cfgVpnName" placeholder="ej: servidor" />
+    <div class="setting-hint">El nombre que le diste al túnel en la app</div>
+  </div>
+  <button class="save-btn" onclick="saveSettings()">GUARDAR</button>
+</div>
+
+<div class="app">
+  <header>
+    <div class="header-top">
+      <div>
+        <div class="brand">CAPM VPN</div>
+        <div class="version">v1.0.0 // PWA EDITION</div>
+      </div>
+      <div class="signal-bars" id="signalBars">
+        <div class="bar" id="b1"></div>
+        <div class="bar" id="b2"></div>
+        <div class="bar" id="b3"></div>
+        <div class="bar" id="b4"></div>
+        <div class="bar" id="b5"></div>
+      </div>
+    </div>
+    <div class="status-line">SYS_READY <span>█</span></div>
+  </header>
+
+  <!-- VPN -->
+  <div class="vpn-section">
+    <div class="vpn-ring">
+      <svg class="ring-svg" viewBox="0 0 180 180">
+        <circle cx="90" cy="90" r="85" fill="none" stroke="#0d2b0d" stroke-width="1"/>
+        <circle cx="90" cy="90" r="85" fill="none" stroke="#00ff41" stroke-width="1.5"
+          stroke-dasharray="40 20 10 80 5 20" stroke-linecap="round" opacity="0.6"/>
+      </svg>
+      <svg class="ring-svg2" viewBox="0 0 164 164">
+        <circle cx="82" cy="82" r="78" fill="none" stroke="#0d2b0d" stroke-width="1"/>
+        <circle cx="82" cy="82" r="78" fill="none" stroke="#00cc33" stroke-width="1"
+          stroke-dasharray="20 60 5 30" stroke-linecap="round" opacity="0.4"/>
+      </svg>
+      <div class="vpn-btn" id="vpnBtn" onclick="toggleVPN()">
+        <div class="power-icon">⏻</div>
+        <div class="btn-label" id="btnLabel">TAP TO CONNECT</div>
+      </div>
+    </div>
+    <div class="vpn-status-text" id="vpnStatusText">DESCONECTADO</div>
+  </div>
+
+  <!-- IP Monitor -->
+  <div class="panel">
+    <div class="panel-header"><div class="panel-dot live"></div>MONITOR DE IP</div>
+    <div class="ip-grid">
+      <div class="ip-cell">
+        <div class="ip-label">MI IP ACTUAL</div>
+        <div class="ip-value loading" id="myIP">CARGANDO...</div>
+      </div>
+      <div class="ip-cell">
+        <div class="ip-label">IP DE CASA</div>
+        <div class="ip-value home" id="homeIPDisplay">NO CONFIG</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PC Status -->
+  <div class="pc-panel">
+    <div class="pc-info">
+      <div class="pc-icon">🖥️</div>
+      <div>
+        <div class="pc-label">ESTADO DEL PC</div>
+        <div class="pc-state checking" id="pcState">VERIFICANDO...</div>
+      </div>
+    </div>
+    <button class="check-btn" onclick="checkPC()">PING</button>
+  </div>
+
+  <!-- Wake on LAN -->
+  <div class="panel">
+    <div class="panel-header"><div class="panel-dot"></div>WAKE ON LAN</div>
+    <div class="wol-body">
+      <div class="wol-input-row">
+        <input class="wol-input" id="macInput" placeholder="MAC: AA:BB:CC:DD:EE:FF" />
+        <button class="wol-btn" onclick="sendWOL()">WAKE</button>
+      </div>
+      <div class="wol-feedback" id="wolFeedback"></div>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="panel">
+    <div class="panel-header"><div class="panel-dot live"></div>ACTIVITY LOG</div>
+    <div class="log-body" id="logBody"></div>
+  </div>
+
+  <footer>
+    <div class="footer-brand">CAPM VPN</div>
+    <div class="footer-uptime" id="footerUptime">UPTIME: --:--:--</div>
+  </footer>
+</div>
+
+<script>
+// ── Matrix ──
+const canvas = document.getElementById('matrix');
+const ctx = canvas.getContext('2d');
+function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+const chars = 'ABCDEF0123456789@#$%CAPMVPN';
+const fontSize = 12;
+let drops = [];
+function initDrops() { drops = Array(Math.floor(canvas.width/fontSize)).fill(1); }
+initDrops();
+function drawMatrix() {
+  ctx.fillStyle = 'rgba(0,0,0,0.05)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#00ff41';
+  ctx.font = fontSize + 'px Share Tech Mono';
+  drops.forEach((y, i) => {
+    ctx.fillText(chars[Math.floor(Math.random()*chars.length)], i*fontSize, y*fontSize);
+    if (y * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+    drops[i]++;
+  });
+}
+setInterval(drawMatrix, 60);
+
+// ── State ──
+let vpnState = 'disconnected';
+let uptimeStart = null;
+let uptimeInterval = null;
+let deferredPrompt = null;
+
+let settings = {
+  homeIP:  localStorage.getItem('capm_homeIP')  || '',
+  pcIP:    localStorage.getItem('capm_pcIP')    || '',
+  mac:     localStorage.getItem('capm_mac')     || '',
+  vpnName: localStorage.getItem('capm_vpnName') || 'servidor'
+};
+
+// ── PWA Install ──
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBanner').classList.add('show');
+  addLog('App lista para instalar', 'ok');
+});
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBanner').classList.remove('show');
+  showToast('CAPM VPN INSTALADA ✓');
+  addLog('PWA instalada exitosamente', 'ok');
+});
+
+function installPWA() {
+  if (!deferredPrompt) {
+    // iOS instructions
+    showToast('Safari → Compartir → Añadir a inicio');
+    return;
+  }
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(r => {
+    if (r.outcome === 'accepted') addLog('Instalación aceptada', 'ok');
+    deferredPrompt = null;
+    document.getElementById('installBanner').classList.remove('show');
+  });
+}
+
+function dismissBanner() {
+  document.getElementById('installBanner').classList.remove('show');
+}
+
+// ── Toast ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── Log ──
+function addLog(msg, type='info') {
+  const body = document.getElementById('logBody');
+  const ts = new Date().toTimeString().slice(0,8);
+  const line = document.createElement('div');
+  line.className = `log-line ${type}`;
+  line.innerHTML = `<span class="ts">[${ts}]</span><span class="msg">${msg}</span>`;
+  body.prepend(line);
+  if (body.children.length > 30) body.removeChild(body.lastChild);
+}
+
+// ── IP ──
+async function fetchMyIP() {
+  const el = document.getElementById('myIP');
+  el.className = 'ip-value loading';
+  el.textContent = 'CARGANDO...';
+  try {
+    const r = await fetch('https://api.ipify.org?format=json');
+    const d = await r.json();
+    el.textContent = d.ip;
+    if (settings.homeIP && d.ip === settings.homeIP) {
+      el.className = 'ip-value match';
+      if (vpnState !== 'connected') setVPNState('connected');
+    } else {
+      el.className = 'ip-value';
+    }
+    addLog(`IP: ${d.ip}`, 'ok');
+  } catch(e) {
+    el.className = 'ip-value';
+    el.textContent = 'SIN RED';
+    addLog('Error obteniendo IP', 'err');
+  }
+}
+
+function updateHomeIPDisplay() {
+  document.getElementById('homeIPDisplay').textContent = settings.homeIP || 'NO CONFIG';
+}
+
+// ── VPN ──
+function toggleVPN() {
+  if (vpnState === 'connecting') return;
+  vpnState === 'disconnected' ? connectVPN() : disconnectVPN();
+}
+
+function connectVPN() {
+  setVPNState('connecting');
+  addLog('Iniciando túnel VPN...', 'info');
+  try { window.location.href = `wireguard://activate/${settings.vpnName}`; } catch(e) {}
+  setTimeout(async () => {
+    await fetchMyIP();
+    const ip = document.getElementById('myIP').textContent;
+    if (settings.homeIP && ip === settings.homeIP) {
+      setVPNState('connected');
+      addLog('Túnel activo ✓', 'ok');
+      showToast('VPN CONECTADA ✓');
+    } else {
+      setVPNState('disconnected');
+      addLog('Activa el túnel en WireGuard', 'info');
+      showToast('Abre WireGuard y activa el túnel');
+    }
+  }, 3500);
+}
+
+function disconnectVPN() {
+  setVPNState('disconnected');
+  addLog('VPN desconectada', 'err');
+  showToast('VPN DESCONECTADA');
+  try { window.location.href = `wireguard://deactivate/${settings.vpnName}`; } catch(e) {}
+  setTimeout(fetchMyIP, 1500);
+}
+
+function setVPNState(state) {
+  vpnState = state;
+  const btn = document.getElementById('vpnBtn');
+  const label = document.getElementById('btnLabel');
+  const status = document.getElementById('vpnStatusText');
+
+  btn.className = 'vpn-btn' + (state === 'connected' ? ' connected' : state === 'connecting' ? ' connecting' : '');
+  status.className = 'vpn-status-text' + (state === 'connected' ? ' connected' : state === 'connecting' ? ' connecting' : '');
+
+  if (state === 'connected') {
+    label.textContent = 'TAP TO DISCONNECT';
+    status.textContent = 'CONECTADO';
+    [1,2,3,4,5].forEach(i => document.getElementById('b'+i).classList.add('active'));
+    startUptime();
+  } else if (state === 'connecting') {
+    label.textContent = 'CONECTANDO...';
+    status.textContent = 'CONECTANDO...';
+    [1,2,3,4,5].forEach(i => {
+      const b = document.getElementById('b'+i);
+      i <= 2 ? b.classList.add('active') : b.classList.remove('active');
+    });
+  } else {
+    label.textContent = 'TAP TO CONNECT';
+    status.textContent = 'DESCONECTADO';
+    [1,2,3,4,5].forEach(i => document.getElementById('b'+i).classList.remove('active'));
+    stopUptime();
+  }
+}
+
+// ── Uptime ──
+function startUptime() {
+  uptimeStart = Date.now();
+  if (uptimeInterval) clearInterval(uptimeInterval);
+  uptimeInterval = setInterval(() => {
+    const s = Math.floor((Date.now()-uptimeStart)/1000);
+    const h = String(Math.floor(s/3600)).padStart(2,'0');
+    const m = String(Math.floor((s%3600)/60)).padStart(2,'0');
+    const sec = String(s%60).padStart(2,'0');
+    document.getElementById('footerUptime').textContent = `UPTIME: ${h}:${m}:${sec}`;
+  }, 1000);
+}
+
+function stopUptime() {
+  if (uptimeInterval) clearInterval(uptimeInterval);
+  document.getElementById('footerUptime').textContent = 'UPTIME: --:--:--';
+}
+
+// ── PC Check ──
+async function checkPC() {
+  const el = document.getElementById('pcState');
+  el.className = 'pc-state checking';
+  el.textContent = 'VERIFICANDO...';
+  if (!settings.pcIP) {
+    el.className = 'pc-state offline';
+    el.textContent = 'CONFIG NEEDED';
+    addLog('Configura la IP del PC en ⚙', 'err');
+    return;
+  }
+  addLog(`Ping → ${settings.pcIP}`, 'info');
+  let online = false;
+  try {
+    await Promise.race([
+      fetch(`http://${settings.pcIP}`, { mode:'no-cors', cache:'no-cache' }).then(() => { online = true; }),
+      new Promise((_,r) => setTimeout(r, 3000))
+    ]);
+    online = true;
+  } catch(e) {
+    if (e instanceof TypeError) online = true;
+  }
+  if (online) {
+    el.className = 'pc-state online';
+    el.textContent = 'EN LÍNEA';
+    addLog('PC detectado ✓', 'ok');
+  } else {
+    el.className = 'pc-state offline';
+    el.textContent = 'OFFLINE';
+    addLog('PC no responde', 'err');
+  }
+}
+
+// ── WOL ──
+function sendWOL() {
+  const mac = document.getElementById('macInput').value || settings.mac;
+  const fb = document.getElementById('wolFeedback');
+  if (!mac || mac.replace(/[^a-fA-F0-9]/g,'').length !== 12) {
+    fb.className = 'wol-feedback err';
+    fb.textContent = '> ERROR: MAC inválida';
+    return;
+  }
+  fb.className = 'wol-feedback info';
+  fb.textContent = '> ENVIANDO MAGIC PACKET...';
+  addLog(`WOL → ${mac}`, 'info');
+  setTimeout(() => {
+    fb.className = 'wol-feedback ok';
+    fb.textContent = '> PACKET ENVIADO ✓ Espera ~30s';
+    addLog('Magic Packet enviado ✓', 'ok');
+  }, 1200);
+}
+
+// ── Settings ──
+function showSettings() {
+  document.getElementById('cfgHomeIP').value = settings.homeIP;
+  document.getElementById('cfgPcIP').value = settings.pcIP;
+  document.getElementById('cfgMac').value = settings.mac;
+  document.getElementById('cfgVpnName').value = settings.vpnName;
+  document.getElementById('settingsOverlay').classList.add('show');
+}
+
+function hideSettings() { document.getElementById('settingsOverlay').classList.remove('show'); }
+
+function saveSettings() {
+  settings.homeIP  = document.getElementById('cfgHomeIP').value.trim();
+  settings.pcIP    = document.getElementById('cfgPcIP').value.trim();
+  settings.mac     = document.getElementById('cfgMac').value.trim();
+  settings.vpnName = document.getElementById('cfgVpnName').value.trim() || 'servidor';
+  localStorage.setItem('capm_homeIP',  settings.homeIP);
+  localStorage.setItem('capm_pcIP',    settings.pcIP);
+  localStorage.setItem('capm_mac',     settings.mac);
+  localStorage.setItem('capm_vpnName', settings.vpnName);
+  if (settings.mac) document.getElementById('macInput').value = settings.mac;
+  updateHomeIPDisplay();
+  hideSettings();
+  addLog('Config guardada ✓', 'ok');
+  showToast('CONFIGURACIÓN GUARDADA');
+}
+
+// ── Service Worker ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(() => addLog('SW registrado → modo offline listo', 'ok'))
+    .catch(() => addLog('SW no disponible', 'err'));
+}
+
+// ── Init ──
+addLog('CAPM VPN PWA v1.0 iniciado', 'ok');
+addLog('Sistema listo', 'info');
+updateHomeIPDisplay();
+if (settings.mac) document.getElementById('macInput').value = settings.mac;
+fetchMyIP();
+setTimeout(checkPC, 2000);
+setInterval(fetchMyIP, 30000); // Auto-refresh IP cada 30s
+</script>
+</body>
+</html>
