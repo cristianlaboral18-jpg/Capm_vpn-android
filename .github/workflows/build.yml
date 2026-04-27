@@ -13,8 +13,21 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       - uses: android-actions/setup-android@v3
-      - run: chmod +x ./gradlew
-      - run: ./gradlew assembleRelease
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.1.1'
+      - name: Move files to correct folders
+        run: |
+          mkdir -p app/src/main/java/com/capm/vpn
+          mkdir -p app/src/main/res/values
+          mkdir -p app/src/main/assets
+          mv AndroidManifest.xml app/src/main/AndroidManifest.xml || true
+          mv MainActivity.java app/src/main/java/com/capm/vpn/MainActivity.java || true
+          mv index.html app/src/main/assets/index.html || true
+          mv styles.xml app/src/main/res/values/styles.xml || true
+      - name: Build APK
+        run: gradle assembleRelease
       - uses: actions/upload-artifact@v4
         with:
           name: CAPM-VPN-APK
